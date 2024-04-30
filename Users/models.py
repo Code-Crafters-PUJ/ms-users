@@ -29,7 +29,7 @@ class profile(models.Model):
 
 class Account(models.Model):
     id = models.AutoField(primary_key=True)
-    email = models.CharField(max_length=45)
+    email = models.CharField(max_length=45,unique=True)
     password = models.CharField(max_length=150)
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
     company = models.ForeignKey(company, on_delete=models.CASCADE, null=True)

@@ -127,8 +127,15 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
+
+CORS_ORIGIN_WHITELIST = [
+    "http://localhost:3000",
+    "http://10.101.137.93",
+]
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials in CORS requests
 
+
+AUTH_USER_MODEL = "Users.Account"
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 

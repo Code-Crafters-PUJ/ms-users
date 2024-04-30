@@ -57,3 +57,15 @@ class createCompany(APIView):
             print("Error durante el procesamiento de la solicitud:", e)
             # Devolver una respuesta de error adecuada
             return JsonResponse({'message': str(e)})
+
+
+class getInfoCompany(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_NIT(self, nit):
+        if company.objects.filter(NIT=nit).exists():
+            return True
+        return False
+    
