@@ -46,7 +46,7 @@ class RegisterRootAccountView(APIView):
                     role_id=1,
                     profile_id=prof.id,
                     company_id=company.objects.get(
-                        businessName=jd['businessName']).id,
+                        NIT=jd['businessNit']).id,
                 )
 
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
@@ -81,10 +81,10 @@ class RegisterAccountView(APIView):
                 Account.objects.create(
                     email=jd['email'],
                     password=make_password(jd['password']),
-                    role_id=1,
+                    role_id=jd['role'],
                     profile_id=prof.id,
                     company_id=company.objects.get(
-                        businessName=jd['businessName']).id,
+                        NIT=jd['businessNit']).id,
                 )
 
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)

@@ -23,20 +23,21 @@ class createCompany(APIView):
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
-    def verify_name(self, businessName):
-        if company.objects.filter(businessName=businessName).exists():
+    def verify_NIT(self, nit):
+        if company.objects.filter(NIT=nit).exists():
             return True
         return False
     def post(self, request):
         try:
             jd = json.loads(request.body)
-            businessName = jd.get('businessName')
+            NIT = jd.get('NIT')
+            
             if not jd['NIT'] or not jd['businessArea'] or not jd['employeeNumber'] or not jd['businessName']:
                 return JsonResponse({'message': 'Campos faltantes'})
-            if self.verify_name(businessName):
+            if self.verify_NIT(NIT):
                 return JsonResponse({'message': 'La empresa ya esta registrada'}, status=201)
             else:
-                NIT = jd.get('NIT')
+                businessName = jd.get('businessName')
                 businessArea = jd.get('businessArea')
                 employeeNumber = jd.get('employeeNumber')
                 company.objects.create(businessName=businessName,
