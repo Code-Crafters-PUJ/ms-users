@@ -8,7 +8,7 @@ from config.settings import SECRET_KEY
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
-# from .serializers import AccountSerializer, CredentialsSerializer, ReportSerializer, PermissionsSerializer, CredentialsSerializer, PermissionsSerializerLogIn
+from .serializers import AccountSerializer
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.db import IntegrityError
@@ -96,7 +96,6 @@ class RegisterAccountView(APIView):
             return JsonResponse({'message': str(e)}, status=400)
 
 
-
 class LoginUserView(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -145,6 +144,7 @@ class getAccountInfoview(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
+
     def validate_token(self, token):
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
@@ -156,6 +156,7 @@ class getAccountInfoview(APIView):
             return False
         except jwt.InvalidTokenError:
             return False
+
     def validate_id(self, token, pk):
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
@@ -176,11 +177,97 @@ class getAccountInfoview(APIView):
             if not self.validate_token(token):
                 return JsonResponse({'message': 'Token invalido o expirado'})
             else:
-                if self.validate_id(token,pk):
-                    account = Account.objects.get(id=pk)
-                    return JsonResponse({'email': account.email, 'role': account.role.name, 'company': company.objects.get(id=account.company.id).businessName})
-                account = Account.objects.get(id=pk)
-                return JsonResponse({'email': account.email, 'role': account.role.name, 'company': company.objects.get(id=account.company.id).businessName})
+                if self.validate_id(token, pk):
+                    user = get_object_or_404(Account, id=pk)
+                    user_data = AccountSerializer(user).data
+                    return JsonResponse({'Account': user_data, 'role': user.role.name, 'company': company.objects.get(id=user.company.id).businessName})
+                else:
+                    return JsonResponse({'message': 'No tienes permisos para ver esta información'})
+        except ObjectDoesNotExist:
+            return JsonResponse({'message': 'Usuario no encontrado'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+    def put(self, request, pk):
+        try:
+            token = request.headers['Authorization']
+            if not self.validate_token(token):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if self.validate_id(token, pk):
+                    jd = json.loads(request.body)
+                    user = Account.objects.get(id=pk)
+                    user.email = jd['email']
+                    user.password = make_password(jd['password'])
+                    user.save()
+                    return JsonResponse({'message': 'Usuario actualizado correctamente'})
+                else:
+                    return JsonResponse({'message': 'No tienes permisos para realizar esta acción'})
+        except ObjectDoesNotExist:
+            return JsonResponse({'message': 'Usuario no encontrado'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+    def delete(self, request, pk):
+        try:
+            token = request.headers['Authorization']
+            if not self.validate_token(token):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if self.validate_id(token, pk):
+                    user = Account.objects.get(id=pk)
+                    user.delete()
+                    return JsonResponse({'message': 'Usuario eliminado correctamente'})
+                else:
+                    return JsonResponse({'message': 'No tienes permisos para realizar esta acción'})
+        except ObjectDoesNotExist:
+            return JsonResponse({'message': 'Usuario no encontrado'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class allUsersInfobyCompany(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def validate_role(self, token, pk):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if payload['role'] == 'Raiz':
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def get(self, request, pk):
+        try:
+            token = request.headers['Authorization']
+            if not self.validate_token(token):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if self.validate_role(token, pk):
+                    accounts = Account.objects.filter(company_id=pk).all()
+                    if not accounts:
+                        return JsonResponse({'message': 'No hay usuarios en esta empresa'})
+                    user_data = AccountSerializer(accounts, many=True)
+                    return JsonResponse({'Account': user_data.data,  'company': company.objects.get(id=pk).businessName})
+                else:
+                    return JsonResponse({'message': 'No tienes permisos para ver esta información'})
         except ObjectDoesNotExist:
             return JsonResponse({'message': 'Usuario no encontrado'})
         except Exception as e:
