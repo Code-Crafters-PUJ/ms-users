@@ -1,27 +1,142 @@
 # ms-users
-To run the microservice, you need to have the .env file created.
 
-To do that:
-1. Copy the example.env file and rename it to .env.
-2. Then complete the environment variables with your own credentials.
+This is the documentation of the commercial user microservice
 
-3. To run the docker container, run the following command:
+
+## Installation
+
+### Steps
+- Copy the example.env file and rename it to .env
+- Then complete the environment variables with your own credentials.
+- To run the docker container, run the following command:
 ```bash
 docker-compose up --build
 ```
-4. To install the dependencies, run the following command, this proyect uses python > 3.10:
+- To install the dependencies, run the following command, this proyect uses python > 3.10:
 ```bash
 pip install -r requirements.txt
 ```
-5. To create the database, run the following command:
+- To create the database, run the following command:
 ```bash
 python manage.py migrate
 ```
-6. To run the microservice, run the following command:
+- To run the microservice, run the following command:
 ```bash
 python manage.py runserver
 ```
-7. To run the tests, run the following command:
-```bash
-python manage.py test
+## API Reference
+
+#### Create a company
+
+```http
+  POST /Commertial/company/createCompany
 ```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `No Parameters` |  |  |
+
+Json to test
+
+```json
+{
+    "businessArea":"tech",
+    "employeeNumber":22,
+    "NIT":"123123123123",
+    "businessName":"Tasty Wooden Hat"
+}
+```
+
+#### Create root user
+```http
+  POST /Commertial/user/createRootUser
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `No Parameters` |  |  |
+
+Json to test
+
+```json
+{
+	"name": "prueba",
+    "lastname":"prueba",
+    "phone":"{{$randomPhoneNumber}}",
+    "email":"{{$randomEmail}}",
+    "password":"asd",
+    "businessNit":"123123123123"
+}
+```
+
+#### Create user
+```http
+  POST /Commertial/user/createUser
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `No Parameters` |  |  |
+
+Json to test
+
+```json
+{
+	"name": "prueba",
+    "lastname":"prueba",
+    "phone":"{{$randomPhoneNumber}}",
+    "email":"noprueba@prueba.com",
+    "password":"asd",
+    "role":2,
+    "businessNit":"123123123123"
+}
+```
+
+
+
+#### Login User
+```http
+  POST /Commertial/user/login
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `No Parameters` |  |  |
+
+Json to test
+
+```json
+{
+    "email":"prueba@prueba.com",
+    "password":"asd"
+}
+```
+
+#### Get accounts by company 
+```http
+  GET /Commertial/user/getAccountsByCompany/<id>
+```
+For root account only
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `Authorization` | `String` |**JWT** key |
+
+
+#### Get account 
+```http
+  GET /Commertial/user/<id>
+```
+Only root accounts can view other profiles
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `Authorization` | `String` |**JWT** key |
+
+
+#### Update account 
+```http
+  PUT /Commertial/user/<id>
+```
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `Authorization` | `String` |**JWT** key |
