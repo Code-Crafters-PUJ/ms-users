@@ -272,3 +272,15 @@ class allUsersInfobyCompany(APIView):
             return JsonResponse({'message': 'Usuario no encontrado'})
         except Exception as e:
             return JsonResponse({'message': str(e)})
+
+
+class logoutAccountView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        response = JsonResponse({'message': 'Sesión cerrada correctamente'})
+        response.delete_cookie('jwt')
+        
+        return response
