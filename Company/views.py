@@ -13,6 +13,7 @@ from django.db import IntegrityError
 
 import datetime
 import json
+import pika
 
 
 from .models import company
@@ -42,7 +43,21 @@ class createCompany(APIView):
                 employeeNumber = jd.get('employeeNumber')
                 company.objects.create(businessName=businessName,
                                                  employeeNumber=employeeNumber, NIT=NIT, businessArea=businessArea)
+                mensaje ="businessName:"+businessName+",employeeNumber:"+employeeNumber+",NIT:"+NIT+",businessArea:"+businessArea
+                print(mensaje)
+                self.publish_to_rabbitmq (mensaje,"company_queue")
                 return JsonResponse({'message': 'Empresa creada correctamente'})
+            
+            """
+            Ejemplo de JSON
+            {
+            "NIT": "123456789",
+            "businessArea": "Tecnología",
+            "employeeNumber": "100",
+            "businessName": "Mi Empresa"
+            }
+            """
+    
 
         except json.JSONDecodeError as e:
             print("Error al decodificar JSON:", e)
@@ -57,6 +72,20 @@ class createCompany(APIView):
             print("Error durante el procesamiento de la solicitud:", e)
             # Devolver una respuesta de error adecuada
             return JsonResponse({'message': str(e)})
+        
+    def publish_to_rabbitmq(self,message, queuename):
+
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', port=5672))
+            channel = connection.channel()
+            channel.queue_declare(queue=queuename)
+            channel.basic_publish(exchange='', routing_key=queuename, body=json.dumps(message))
+            connection.close()
+            print("Mensaje publicado en RabbitMQ correctamente.")
+        except Exception as e:
+            print("Error al publicar en RabbitMQ:", e)
+
+    
 
 
 class getInfoCompany(APIView):
@@ -69,3 +98,4 @@ class getInfoCompany(APIView):
             return True
         return False
     
+
