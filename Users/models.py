@@ -10,14 +10,8 @@ class Module(models.Model):
 class Role(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=45)
-    module = models.ForeignKey(Module, on_delete=models.CASCADE)
 
 
-class Permission(models.Model):
-    id = models.AutoField(primary_key=True)
-    permise_view_or_modify = models.CharField(max_length=2)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    module = models.ForeignKey(Module, on_delete=models.CASCADE)
 
 
 class profile(models.Model):
@@ -39,3 +33,10 @@ class Account(models.Model):
     REQUIRED_FIELDS = []
     is_anonymous = False
     is_authenticated = True
+
+
+class Permission(models.Model):
+    id = models.AutoField(primary_key=True)
+    permise_view_or_modify = models.CharField(max_length=2)
+    account_id = models.ForeignKey(Account, on_delete=models.CASCADE)
+    module = models.ForeignKey(Module, on_delete=models.CASCADE)

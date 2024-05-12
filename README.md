@@ -41,7 +41,7 @@ Json to test
 ```json
 {
     "businessArea":"tech",
-    "employeeNumber":22,
+    "employeeNumber":"22",
     "NIT":"123123123123",
     "businessName":"Tasty Wooden Hat"
 }
@@ -87,7 +87,7 @@ Json to test
     "phone":"{{$randomPhoneNumber}}",
     "email":"noprueba@prueba.com",
     "password":"asd",
-    "role":2,
+    "role":"Nomina",
     "businessNit":"123123123123"
 }
 ```
@@ -140,3 +140,14 @@ Only root accounts can view other profiles
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
 | `Authorization` | `String` |**JWT** key |
+
+
+#### Get Company 
+```http
+  GET /Commertial/company/<NIT>
+```
+Only root accounts can view other profiles
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `Authorization` | `String` |**JWT** key |
+

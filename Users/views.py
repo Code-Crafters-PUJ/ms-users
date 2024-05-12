@@ -1,5 +1,5 @@
 import jwt
-from .models import Account, profile
+from .models import Account, profile, Role
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -81,7 +81,7 @@ class RegisterAccountView(APIView):
                 Account.objects.create(
                     email=jd['email'],
                     password=make_password(jd['password']),
-                    role_id=jd['role'],
+                    role=Role.objects.get(name=jd['role']),
                     profile_id=prof.id,
                     company_id=company.objects.get(
                         NIT=jd['businessNit']).id,

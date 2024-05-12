@@ -7,9 +7,7 @@ from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 import jwt
-from django.contrib.auth.hashers import make_password
-from django.db import transaction
-from django.db import IntegrityError
+from .serializers import companySerializer
 
 import datetime
 import json
@@ -86,8 +84,6 @@ class createCompany(APIView):
             print("Error al publicar en RabbitMQ:", e)
 
     
-
-
 class getInfoCompany(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -97,5 +93,32 @@ class getInfoCompany(APIView):
         if company.objects.filter(NIT=nit).exists():
             return True
         return False
-    
 
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def get(self, request, pk):
+        try:
+            token = request.headers['Authorization']
+            if not self.validate_token(token):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.verify_NIT(pk):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                else:
+                    company_data = get_object_or_404(company, NIT=pk)
+
+                    company_serializer = companySerializer(company_data)
+
+                    return JsonResponse( company_serializer.data)
+        except KeyError:
+            return JsonResponse({'message': 'Token no encontrado'})
