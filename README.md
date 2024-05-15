@@ -86,13 +86,32 @@ Json to test
 
 ```json
 {
-	"name": "prueba",
-    "lastname":"prueba",
-    "phone":"{{$randomPhoneNumber}}",
-    "email":"noprueba@prueba.com",
-    "password":"asd",
-    "role":"Nomina",
-    "businessNit":"123123123123"
+    "name": "prueba",
+    "lastname": "prueba",
+    "phone": "{{$randomPhoneNumber}}",
+    "email": "{{$randomEmail}}",
+    "password": "asd",
+    "role": "Nomina",
+    "type_id_card": "Cedula",
+    "id_card": "{{$randomUUID}}",
+    "businessNit": "123123123123",
+    "permissions": {
+        "0": {
+            "module": "Ventas",
+            "view": true,
+            "modify": false
+        },
+        "1": {
+            "module": "Nomina",
+            "view": true,
+            "modify": false
+        },
+        "2": {
+            "module": "Facturacion",
+            "view": true,
+            "modify": false
+        }
+    }
 }
 ```
 
