@@ -174,3 +174,12 @@ Only root accounts can view other profiles
 | :-------- | :------- | :------------------------- |
 | `Authorization` | `String` |**JWT** key |
 
+#### Get Root Accounts 
+```http
+  GET /Commertial/user/getRootAccount/<Id>
+```
+Only root accounts can view other profiles
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `Authorization` | `String` |**JWT** key |
+

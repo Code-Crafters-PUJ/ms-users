@@ -51,17 +51,6 @@ class createCompany(APIView):
                 print(mensaje)
                 self.publish_to_rabbitmq(mensaje, "company_queue")
                 return JsonResponse({'message': 'Empresa creada correctamente'})
-
-            """
-            Ejemplo de JSON
-            {
-            "NIT": "123456789",
-            "businessArea": "Tecnología",
-            "employeeNumber": "100",
-            "businessName": "Mi Empresa"
-            }
-            """
-
         except json.JSONDecodeError as e:
             print("Error al decodificar JSON:", e)
             print("Cuerpo de la solicitud:", request.body)
@@ -129,3 +118,5 @@ class getInfoCompany(APIView):
                     return JsonResponse(company_serializer.data)
         except KeyError:
             return JsonResponse({'message': 'Token no encontrado'})
+
+

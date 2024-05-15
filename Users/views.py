@@ -292,6 +292,46 @@ class allUsersInfobyCompany(APIView):
             return JsonResponse({'message': str(e)})
 
 
+class getRootAccount(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id(self, id):
+        if company.objects.filter(id=id).exists():
+            return True
+        return False
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def get(self, request, pk):
+        try:
+            token = request.headers['Authorization']
+            if not self.validate_token(token):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.verify_Id(pk):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                else:
+                    company_data = get_object_or_404(company, id=pk)
+                    Account_data = Account.objects.filter(
+                        company_id=company_data.id, role_id=1).all()
+                    company_serializer = AccountSerializer(Account_data, many=True)
+                    return JsonResponse({'Accounts': company_serializer.data})
+        except KeyError:
+            return JsonResponse({'message': 'Token no encontrado'})
+
+
 class logoutAccountView(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
