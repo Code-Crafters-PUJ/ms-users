@@ -189,6 +189,11 @@ class getAccountInfoview(APIView):
             return False
         except jwt.InvalidTokenError:
             return False
+    def validate_email(self, email):
+        if Account.objects.filter(email=email).exists():
+            return True
+        return False
+    
 
     def get(self, request, pk):
         try:
@@ -214,12 +219,15 @@ class getAccountInfoview(APIView):
                 return JsonResponse({'message': 'Token invalido o expirado'})
             else:
                 if self.validate_id(token, pk):
-                    jd = json.loads(request.body)
-                    user = Account.objects.get(id=pk)
-                    user.email = jd['email']
-                    user.password = make_password(jd['password'])
-                    user.save()
-                    return JsonResponse({'message': 'Usuario actualizado correctamente'})
+                    if not self.validate_email(request.body['email']):
+                        jd = json.loads(request.body)
+                        user = Account.objects.get(id=pk)
+                        user.email = jd['email']
+                        user.password = make_password(jd['password'])
+                        user.save()
+                        return JsonResponse({'message': 'Usuario actualizado correctamente'})
+                    else:
+                        return JsonResponse({'message': 'El email ya existe'})
                 else:
                     return JsonResponse({'message': 'No tienes permisos para realizar esta acción'})
         except ObjectDoesNotExist:
