@@ -9,3 +9,5 @@ class company(models.Model):
     businessArea = models.CharField(max_length=45)
     employeeNumber = models.IntegerField()
     businessName = models.CharField(max_length=45)
+    electronicBilling = models.CharField(max_length=45)
+    electronicPayroll = models.CharField(max_length=45)

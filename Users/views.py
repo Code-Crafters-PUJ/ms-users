@@ -1,5 +1,5 @@
 import jwt
-from .models import Account, profile, Role
+from .models import Account, profile, Role, Permission, Module
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -10,7 +10,6 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from .serializers import AccountSerializer
 from django.contrib.auth.hashers import make_password
-from django.db import transaction
 from django.db import IntegrityError
 
 
@@ -40,14 +39,18 @@ class RegisterRootAccountView(APIView):
             else:
                 prof = profile.objects.create(
                     name=jd['name'], lastname=jd['lastname'], phone=jd['phone'])
-                Account.objects.create(
+                account = Account.objects.create(
                     email=jd['email'],
                     password=make_password(jd['password']),
                     role_id=1,
                     profile_id=prof.id,
-                    company_id=company.objects.get(
-                        NIT=jd['businessNit']).id,
+                    company=company.objects.get(
+                        NIT=jd['businessNit']),
+                    type_id_card=jd['type_id_card'],
+                    id_card=jd['id_card']
                 )
+
+
 
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:
@@ -83,9 +86,24 @@ class RegisterAccountView(APIView):
                     password=make_password(jd['password']),
                     role=Role.objects.get(name=jd['role']),
                     profile_id=prof.id,
-                    company_id=company.objects.get(
-                        NIT=jd['businessNit']).id,
+                    company=company.objects.get(
+                        NIT=jd['businessNit']),
+                    type_id_card=jd['type_id_card'],
+                    id_card=jd['id_card']
                 )
+                permissions_data = jd.get('permissions', {})
+                for key, permission_data in permissions_data.items():
+                    module_name = permission_data.get('module', '')
+                    view = permission_data.get('view', False)
+                    Modify = permission_data.get('Modify', False)
+                    Permission.objects.create(
+                        module=Module.objects.get(name=module_name),
+                        idAccount=Account.objects.get(
+                            id_card=jd['id_card']),
+                        modify=Modify,
+                        view=view
+                    )
+
 
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:

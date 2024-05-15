@@ -29,6 +29,8 @@ class Account(models.Model):
     company = models.ForeignKey(company, on_delete=models.CASCADE, null=True)
     profile = models.ForeignKey(profile, on_delete=models.CASCADE)
     type = models.CharField(max_length=2, default='E')
+    type_id_card = models.CharField(max_length=45, null=True)
+    id_card = models.CharField(max_length=45, null=True, unique=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     is_anonymous = False
@@ -38,5 +40,7 @@ class Account(models.Model):
 class Permission(models.Model):
     id = models.AutoField(primary_key=True)
     permise_view_or_modify = models.CharField(max_length=2)
+    view = models.models.BooleanField(default=False)
+    modify = models.models.BooleanField(default=False)
     account_id = models.ForeignKey(Account, on_delete=models.CASCADE)
     module = models.ForeignKey(Module, on_delete=models.CASCADE)
