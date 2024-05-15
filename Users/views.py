@@ -45,7 +45,7 @@ class RegisterRootAccountView(APIView):
                     role_id=1,
                     profile_id=prof.id,
                     company=company.objects.get(
-                        NIT=jd['businessNit']),
+                        NIT=jd['company_NIT']),
                     type_id_card=jd['type_id_card'],
                     id_card=jd['id_card']
                 )

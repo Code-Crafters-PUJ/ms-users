@@ -17,6 +17,8 @@ import pika
 from .models import company
 from Users.models import Account
 # Create your views here.
+
+
 class createCompany(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -26,11 +28,12 @@ class createCompany(APIView):
         if company.objects.filter(NIT=nit).exists():
             return True
         return False
+
     def post(self, request):
         try:
             jd = json.loads(request.body)
             NIT = jd.get('NIT')
-            
+
             if not jd['NIT'] or not jd['businessArea'] or not jd['employeeNumber'] or not jd['businessName']:
                 return JsonResponse({'message': 'Campos faltantes'})
             if self.verify_NIT(NIT):
@@ -39,13 +42,16 @@ class createCompany(APIView):
                 businessName = jd.get('businessName')
                 businessArea = jd.get('businessArea')
                 employeeNumber = jd.get('employeeNumber')
+                electronicBilling = jd.get('electronicBilling')
+                electronicPayroll = jd.get('electronicPayroll')
                 company.objects.create(businessName=businessName,
-                                                 employeeNumber=employeeNumber, NIT=NIT, businessArea=businessArea)
-                mensaje ="businessName:"+businessName+",employeeNumber:"+employeeNumber+",NIT:"+NIT+",businessArea:"+businessArea
+                                       employeeNumber=employeeNumber, NIT=NIT, businessArea=businessArea, electronicBilling=electronicBilling, electronicPayroll=electronicPayroll)
+                mensaje = "businessName:"+businessName+",employeeNumber:" + \
+                    employeeNumber+",NIT:"+NIT+",businessArea:"+businessArea
                 print(mensaje)
-                self.publish_to_rabbitmq (mensaje,"company_queue")
+                self.publish_to_rabbitmq(mensaje, "company_queue")
                 return JsonResponse({'message': 'Empresa creada correctamente'})
-            
+
             """
             Ejemplo de JSON
             {
@@ -55,7 +61,6 @@ class createCompany(APIView):
             "businessName": "Mi Empresa"
             }
             """
-    
 
         except json.JSONDecodeError as e:
             print("Error al decodificar JSON:", e)
@@ -70,20 +75,22 @@ class createCompany(APIView):
             print("Error durante el procesamiento de la solicitud:", e)
             # Devolver una respuesta de error adecuada
             return JsonResponse({'message': str(e)})
-        
-    def publish_to_rabbitmq(self,message, queuename):
+
+    def publish_to_rabbitmq(self, message, queuename):
 
         try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', port=5672))
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host='localhost', port=5672))
             channel = connection.channel()
             channel.queue_declare(queue=queuename)
-            channel.basic_publish(exchange='', routing_key=queuename, body=json.dumps(message))
+            channel.basic_publish(
+                exchange='', routing_key=queuename, body=json.dumps(message))
             connection.close()
             print("Mensaje publicado en RabbitMQ correctamente.")
         except Exception as e:
             print("Error al publicar en RabbitMQ:", e)
 
-    
+
 class getInfoCompany(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -119,6 +126,6 @@ class getInfoCompany(APIView):
 
                     company_serializer = companySerializer(company_data)
 
-                    return JsonResponse( company_serializer.data)
+                    return JsonResponse(company_serializer.data)
         except KeyError:
             return JsonResponse({'message': 'Token no encontrado'})

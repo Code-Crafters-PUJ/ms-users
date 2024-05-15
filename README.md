@@ -43,7 +43,9 @@ Json to test
     "businessArea":"tech",
     "employeeNumber":"22",
     "NIT":"123123123123",
-    "businessName":"Tasty Wooden Hat"
+    "businessName":"Tasty Wooden Hat",
+    "electronicBilling":"24",
+    "electronicPayroll":"123123"
 }
 ```
 
@@ -61,11 +63,13 @@ Json to test
 ```json
 {
 	"name": "prueba",
-    "lastname":"prueba",
-    "phone":"{{$randomPhoneNumber}}",
-    "email":"{{$randomEmail}}",
-    "password":"asd",
-    "businessNit":"123123123123"
+  "lastname":"prueba",
+  "phone":"{{$randomPhoneNumber}}",
+  "email":"{{$randomEmail}}",
+  "password":"asd",
+  "company_NIT":"123123123123",
+  "id_card":"123123123123",
+  "type_id_card":"cedula"
 }
 ```
 
