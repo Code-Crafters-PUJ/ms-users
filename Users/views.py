@@ -95,10 +95,10 @@ class RegisterAccountView(APIView):
                 for key, permission_data in permissions_data.items():
                     module_name = permission_data.get('module', '')
                     view = permission_data.get('view', False)
-                    Modify = permission_data.get('Modify', False)
+                    Modify = permission_data.get('modify', False)
                     Permission.objects.create(
                         module=Module.objects.get(name=module_name),
-                        idAccount=Account.objects.get(
+                        account_id=Account.objects.get(
                             id_card=jd['id_card']),
                         modify=Modify,
                         view=view

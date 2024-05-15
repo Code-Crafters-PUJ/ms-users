@@ -39,7 +39,6 @@ class Account(models.Model):
 
 class Permission(models.Model):
     id = models.AutoField(primary_key=True)
-    permise_view_or_modify = models.CharField(max_length=2)
     view = models.BooleanField(default=False)
     modify = models.BooleanField(default=False)
     account_id = models.ForeignKey(Account, on_delete=models.CASCADE)
