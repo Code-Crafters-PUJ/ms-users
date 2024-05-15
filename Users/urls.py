@@ -1,7 +1,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import RegisterRootAccountView, RegisterAccountView, LoginUserView, getAccountInfoview, allUsersInfobyCompany, logoutAccountView, getRootAccount
+from .views import RegisterRootAccountView, RegisterAccountView, LoginUserView, getAccountInfoview, allUsersInfobyCompany, logoutAccountView, getRootAccount, deleteAccountView
 app_name = 'user'
 
 urlpatterns = [
@@ -13,4 +13,5 @@ urlpatterns = [
          allUsersInfobyCompany.as_view(), name='accounts_info'),
     path('getRootAccount/<int:pk>', getRootAccount.as_view(), name='company_info'),
     path('logout', logoutAccountView.as_view(), name='accounts_info'),
+    path('deleteUser/<int:idUser>/<int:idCompany>', deleteAccountView.as_view(), name='accounts_delete')
 ]

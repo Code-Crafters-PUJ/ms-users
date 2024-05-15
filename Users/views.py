@@ -46,11 +46,10 @@ class RegisterRootAccountView(APIView):
                     profile_id=prof.id,
                     company=company.objects.get(
                         NIT=jd['company_NIT']),
+                    type='R',
                     type_id_card=jd['type_id_card'],
                     id_card=jd['id_card']
                 )
-
-
 
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:
@@ -86,6 +85,7 @@ class RegisterAccountView(APIView):
                     password=make_password(jd['password']),
                     role=Role.objects.get(name=jd['role']),
                     profile_id=prof.id,
+                    type='E',
                     company=company.objects.get(
                         NIT=jd['businessNit']),
                     type_id_card=jd['type_id_card'],
@@ -104,7 +104,6 @@ class RegisterAccountView(APIView):
                         view=view
                     )
 
-
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:
             error_message = 'El ID ya existe en la base de datos'
@@ -112,6 +111,8 @@ class RegisterAccountView(APIView):
         except Exception as e:
             print(e)
             return JsonResponse({'message': str(e)}, status=400)
+
+
 
 
 class LoginUserView(APIView):
@@ -225,6 +226,7 @@ class getAccountInfoview(APIView):
             return JsonResponse({'message': 'Usuario no encontrado'})
         except Exception as e:
             return JsonResponse({'message': str(e)})
+
     def delete(self, request, pk):
         try:
             token = request.headers['Authorization']
@@ -326,7 +328,8 @@ class getRootAccount(APIView):
                     company_data = get_object_or_404(company, id=pk)
                     Account_data = Account.objects.filter(
                         company_id=company_data.id, role_id=1).all()
-                    company_serializer = AccountSerializer(Account_data, many=True)
+                    company_serializer = AccountSerializer(
+                        Account_data, many=True)
                     return JsonResponse({'Accounts': company_serializer.data})
         except KeyError:
             return JsonResponse({'message': 'Token no encontrado'})
@@ -340,5 +343,37 @@ class logoutAccountView(APIView):
     def post(self, request):
         response = JsonResponse({'message': 'Sesión cerrada correctamente'})
         response.delete_cookie('jwt')
-        
+
         return response
+
+
+class deleteAccountView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id_Company(self, id):
+        if company.objects.filter(id=id).exists():
+            return True
+        return False
+
+    def verify_Id_User(self, id):
+        if Account.objects.filter(id=id).exists():
+            return True
+        return False
+    def delete(self, request, idUser, idCompany):
+        try:
+            token = request.headers['Authorization']
+            if not self.validate_token(token):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.verify_Id_Company(idCompany):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                if not self.verify_Id_User(idUser):
+                    return JsonResponse({'message': 'Usuario no encontrado'})
+                else:
+                    user = Account.objects.get(id=idUser)
+                    user.delete()
+                    return JsonResponse({'message': 'Usuario eliminado correctamente'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
