@@ -46,10 +46,10 @@ class createCompany(APIView):
                 employeeNumber = jd.get('employeeNumber')
                 electronicBilling = jd.get('electronicBilling')
                 electronicPayroll = jd.get('electronicPayroll')
-                company.objects.create(businessName=businessName,
+                compa = company.objects.create(businessName=businessName,
                                        employeeNumber=employeeNumber, NIT=NIT, businessArea=businessArea, electronicBilling=electronicBilling, electronicPayroll=electronicPayroll)
                 mensaje = "businessName:"+businessName+",employeeNumber:" + \
-                    employeeNumber+",NIT:"+NIT+",businessArea:"+businessArea
+                    employeeNumber+",NIT:"+NIT+",businessArea:"+businessArea+",IDCompany:"+str(compa.id)
                 print(mensaje)
                 self.publish_to_rabbitmq(mensaje, "company_queue")
                 return JsonResponse({'message': 'Empresa creada correctamente'})
@@ -71,7 +71,7 @@ class createCompany(APIView):
 
         try:
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host='localhost', port=5672))
+                pika.ConnectionParameters(host='10.147.17.214', port=5672))
             channel = connection.channel()
             channel.queue_declare(queue=queuename)
             channel.basic_publish(

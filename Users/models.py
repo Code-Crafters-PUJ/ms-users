@@ -50,16 +50,17 @@ class payment(models.Model):
 
 
 class plan (models.Model):
-    plan_id = models.IntegerField(primary_key=True)
+    plan_id = models.AutoField(primary_key=True)
     type = models.CharField(max_length=45)
-    description = models.CharField(max_length=45)
+    description = models.CharField(max_length=45,null=True,)
     mensual_price = models.FloatField()
     semestral_price = models.FloatField()
     anual_price = models.FloatField()
-    users = models.IntegerField()
+    users = models.IntegerField(null=True, blank=True)
+
     state = models.CharField(max_length=45)
-    num_accounts = models.IntegerField()
-    num_services = models.IntegerField()
+    num_accounts = models.IntegerField(null=True, blank=True)
+    num_services = models.IntegerField(null=True, blank=True)
     active = models.IntegerField(default=1)
 
 

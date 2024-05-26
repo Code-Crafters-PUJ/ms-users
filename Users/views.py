@@ -12,7 +12,6 @@ from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, Pe
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError, transaction
 
-from Users.rabbitmqcaller import send_request_to_rabbitmq
 import datetime
 import json
 
@@ -46,7 +45,7 @@ class RegisterRootAccountView(APIView):
                 required_fields_company = [
                     'NIT', 'businessArea', 'employeeNumber', 'name']
                 required_fields_bill = ['initial_date', 'final_date', 'amount',
-                                        'active', 'payment_date', 'payment_method', 'plan', 'coupon']
+                                        'active', 'payment_date', 'payment_id', 'plan', 'coupon']
                 for field in required_fields_account:
                     if field not in jdAccount:
                         raise ValueError(
@@ -64,7 +63,7 @@ class RegisterRootAccountView(APIView):
                     raise ValueError("Email is already registered")
                 try:
                     plan.objects.get(plan_id=jdBill['plan'])
-                    payment.objects.get(method=jdBill['payment_method'])
+                    payment_data = payment.objects.get(payment_id=jdBill['payment_id'])
                 except plan.DoesNotExist:
                     raise ValueError("Invalid plan ID")
                 except payment.DoesNotExist:
@@ -73,9 +72,7 @@ class RegisterRootAccountView(APIView):
                     name=jdAccount['name'], lastname=jdAccount['lastname'], phone=jdAccount['phone'])
                 company.objects.create(NIT=jdCompany['NIT'], businessArea=jdCompany['businessArea'],
                                        employeeNumber=jdCompany['employeeNumber'], businessName=jdCompany['name'])
-                plan_request_data = {'plan_id': jdBill['plan']}
-                plan_response = send_request_to_rabbitmq('plan_request_queue', plan_request_data)
-                print(plan_response)
+                
                 Account.objects.create(
                     email=jdAccount['email'],
                     password=make_password(jdAccount['password']),
@@ -89,7 +86,7 @@ class RegisterRootAccountView(APIView):
                 )
                 jdBill = jd.get('Bill', {})
                 billings.objects.create(initial_date=jdBill['initial_date'], final_date=jdBill['final_date'], amount=jdBill['amount'],
-                                        active=jdBill['active'], payment_date=jdBill['payment_date'], payment_method=jdBill['payment_method'], plan=plan.objects.get(plan_id=jdBill['plan']), coupon=jdBill['coupon'], payment=payment.objects.get(method=jdBill['payment_method']))
+                                        active=jdBill['active'], payment_date=jdBill['payment_date'], payment_method=payment_data.method, plan=plan.objects.get(plan_id=jdBill['plan']), coupon=jdBill['coupon'], payment=payment_data)
                 module= Module.objects.all()
                 for mod in module:
                     Permission.objects.create(
