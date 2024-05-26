@@ -12,7 +12,7 @@ from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, Pe
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError, transaction
 
-
+from rabbitmq import send_request_to_rabbitmq
 import datetime
 import json
 
@@ -73,6 +73,9 @@ class RegisterRootAccountView(APIView):
                     name=jdAccount['name'], lastname=jdAccount['lastname'], phone=jdAccount['phone'])
                 company.objects.create(NIT=jdCompany['NIT'], businessArea=jdCompany['businessArea'],
                                        employeeNumber=jdCompany['employeeNumber'], businessName=jdCompany['name'])
+                plan_request_data = {'plan_id': jdBill['plan']}
+                plan_response = send_request_to_rabbitmq('plan_request_queue', plan_request_data)
+                print(plan_response)
                 Account.objects.create(
                     email=jdAccount['email'],
                     password=make_password(jdAccount['password']),
