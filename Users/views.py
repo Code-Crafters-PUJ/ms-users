@@ -12,7 +12,7 @@ from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, Pe
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError, transaction
 
-from rabbitmq import send_request_to_rabbitmq
+from Users.rabbitmqcaller import send_request_to_rabbitmq
 import datetime
 import json
 
