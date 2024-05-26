@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, ClientsSerializer, BillingSerializer
 from django.contrib.auth.hashers import make_password
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 
 import datetime
@@ -33,14 +33,41 @@ class RegisterRootAccountView(APIView):
 
     def post(self, request):
         try:
-            jd = json.loads(request.body)
-            jdAccount = jd.get('Account', {})
-            jdCompany = jd.get('Company', {})
-            email = jdAccount['email']
-            errors = {}
-            if self.verify_email(email):
-                return JsonResponse({'message': 'El email ya esta registrado'}, status=201)
-            else:
+            with transaction.atomic():
+                jd = json.loads(request.body)
+                jdAccount = jd.get('Account', {})
+                jdCompany = jd.get('Company', {})
+                jdBill = jd.get('Bill', {})
+                email = jdAccount['email']
+
+                # Check for missing or invalid data before proceeding
+                required_fields_account = [
+                    'name', 'lastname', 'phone', 'password', 'type_id_card', 'id_card']
+                required_fields_company = [
+                    'NIT', 'businessArea', 'employeeNumber', 'name']
+                required_fields_bill = [ 'initial_date', 'final_date', 'amount',
+                                        'active', 'payment_date', 'payment_method', 'plan', 'coupon']
+                for field in required_fields_account:
+                    if field not in jdAccount:
+                        raise ValueError(
+                            f"Missing required field 'Account.{field}'")
+                for field in required_fields_company:
+                    if field not in jdCompany:
+                        raise ValueError(
+                            f"Missing required field 'Company.{field}'")
+                for field in required_fields_bill:
+                    if field not in jdBill:
+                        raise ValueError(f"Missing required field 'Bill.{field}'")
+
+                if self.verify_email(email):
+                    raise ValueError("Email is already registered")
+                try:
+                    plan.objects.get(plan_id=jdBill['plan'])
+                    payment.objects.get(method=jdBill['payment_method'])
+                except plan.DoesNotExist:
+                    raise ValueError("Invalid plan ID")
+                except payment.DoesNotExist:
+                    raise ValueError("Invalid payment method")
                 prof = profile.objects.create(
                     name=jdAccount['name'], lastname=jdAccount['lastname'], phone=jdAccount['phone'])
                 company.objects.create(NIT=jdCompany['NIT'], businessArea=jdCompany['businessArea'],
@@ -56,10 +83,8 @@ class RegisterRootAccountView(APIView):
                     type_id_card=jdAccount['type_id_card'],
                     id_card=jdAccount['id_card']
                 )
-                
-                
                 jdBill = jd.get('Bill', {})
-                billings.objects.create(suscription_id=jdBill['suscription_id'], initial_date=jdBill['initial_date'], final_date=jdBill['final_date'], amount=jdBill['amount'],
+                billings.objects.create( initial_date=jdBill['initial_date'], final_date=jdBill['final_date'], amount=jdBill['amount'],
                                         active=jdBill['active'], payment_date=jdBill['payment_date'], payment_method=jdBill['payment_method'], plan=plan.objects.get(plan_id=jdBill['plan']), coupon=jdBill['coupon'], payment=payment.objects.get(method=jdBill['payment_method']))
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:

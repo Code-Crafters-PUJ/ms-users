@@ -61,7 +61,6 @@ class plan (models.Model):
     num_accounts = models.IntegerField()
     num_services = models.IntegerField()
     active = models.IntegerField(default=1)
-    company = models.ForeignKey(company, on_delete=models.CASCADE)
 
 
 class services(models.Model):
@@ -105,11 +104,12 @@ class trials(models.Model):
 
 
 class billings(models.Model):
-    suscription_id = models.IntegerField(primary_key=True)
+    id = models.AutoField(primary_key=True)
+    suscription_id = models.IntegerField(null=True,blank=True)
     initial_date = models.DateField()
     final_date = models.DateField()
     amount = models.FloatField()
-    coupon = models.CharField(max_length=45)
+    coupon = models.CharField(max_length=45, null=True, blank=True)
     active = models.IntegerField(default=1)
     
     plan = models.ForeignKey(plan, on_delete=models.CASCADE)
