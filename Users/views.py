@@ -1,5 +1,5 @@
 import jwt
-from .models import Account, profile, Role, Permission, Module
+from .models import Account, profile, Role, Permission, Module, plan_has_services, contactUs, services, clients, trials, coupons, billings, plan, payment
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -8,13 +8,15 @@ from config.settings import SECRET_KEY
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
-from .serializers import AccountSerializer
+from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, ClientsSerializer, BillingSerializer
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError
 
 
 import datetime
 import json
+
+import random
 
 from Company.models import company
 
@@ -32,25 +34,33 @@ class RegisterRootAccountView(APIView):
     def post(self, request):
         try:
             jd = json.loads(request.body)
-            email = jd['email']
+            jdAccount = jd.get('Account', {})
+            jdCompany = jd.get('Company', {})
+            email = jdAccount['email']
             errors = {}
             if self.verify_email(email):
                 return JsonResponse({'message': 'El email ya esta registrado'}, status=201)
             else:
                 prof = profile.objects.create(
-                    name=jd['name'], lastname=jd['lastname'], phone=jd['phone'])
-                account = Account.objects.create(
-                    email=jd['email'],
-                    password=make_password(jd['password']),
+                    name=jdAccount['name'], lastname=jdAccount['lastname'], phone=jdAccount['phone'])
+                company.objects.create(NIT=jdCompany['NIT'], businessArea=jdCompany['businessArea'],
+                                       employeeNumber=jdCompany['employeeNumber'], businessName=jdCompany['name'])
+                Account.objects.create(
+                    email=jdAccount['email'],
+                    password=make_password(jdAccount['password']),
                     role_id=1,
                     profile_id=prof.id,
                     company=company.objects.get(
-                        NIT=jd['company_NIT']),
+                        NIT=jdCompany['NIT']),
                     type='R',
-                    type_id_card=jd['type_id_card'],
-                    id_card=jd['id_card']
+                    type_id_card=jdAccount['type_id_card'],
+                    id_card=jdAccount['id_card']
                 )
-
+                
+                
+                jdBill = jd.get('Bill', {})
+                billings.objects.create(suscription_id=jdBill['suscription_id'], initial_date=jdBill['initial_date'], final_date=jdBill['final_date'], amount=jdBill['amount'],
+                                        active=jdBill['active'], payment_date=jdBill['payment_date'], payment_method=jdBill['payment_method'], plan=plan.objects.get(plan_id=jdBill['plan']), coupon=jdBill['coupon'], payment=payment.objects.get(method=jdBill['payment_method']))
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:
             error_message = 'El ID ya existe en la base de datos'
@@ -111,8 +121,6 @@ class RegisterAccountView(APIView):
         except Exception as e:
             print(e)
             return JsonResponse({'message': str(e)}, status=400)
-
-
 
 
 class LoginUserView(APIView):
@@ -189,11 +197,11 @@ class getAccountInfoview(APIView):
             return False
         except jwt.InvalidTokenError:
             return False
+
     def validate_email(self, email):
         if Account.objects.filter(email=email).exists():
             return True
         return False
-    
 
     def get(self, request, pk):
         try:
@@ -369,6 +377,7 @@ class deleteAccountView(APIView):
         if Account.objects.filter(id=id).exists():
             return True
         return False
+
     def delete(self, request, idUser, idCompany):
         try:
             token = request.headers['Authorization']
@@ -383,5 +392,489 @@ class deleteAccountView(APIView):
                     user = Account.objects.get(id=idUser)
                     user.delete()
                     return JsonResponse({'message': 'Usuario eliminado correctamente'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class UpdatePlanView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id_Plan(self, id):
+        if billings.objects.filter(id=id).exists():
+            return True
+        return False
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+    def put(self, request, pk):
+        try:
+            if not self.verify_Id_Plan(pk):
+                return JsonResponse({'message': 'Plan no encontrado'})
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                jd = json.loads(request.body)
+                billings.objects.filter(id=pk).update(
+                    initial_date=jd['initial_date'],
+                    final_date=jd['final_date'],
+                    amount=jd['amount'],
+                    active=jd['active'],
+                    payment_date=jd['payment_date'],
+                    payment_method=jd['payment_method'],
+                    plan=plan.objects.get(plan_id=jd['plan']),
+                    coupon=jd['coupon'],
+                    payment=payment.objects.get(method=jd['payment_method'])
+                )
+            return JsonResponse({'message': 'Plan actualizado correctamente'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class BillsView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id_Plan(self, id):
+        if billings.objects.filter(id=id).exists():
+            return True
+        return False
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+    
+    def get(self, request, pk):
+        try:
+            if pk == '':
+                if not self.validate_token(request.headers['Authorization']):
+                    return JsonResponse({'message': 'Token invalido o expirado'})
+                else:
+                    plans = billings.objects.all()
+                    plans_data = BillingSerializer(plans, many=True)
+                    return JsonResponse({'Plans': plans_data.data})
+            else:
+                if not self.validate_token(request.headers['Authorization']):
+                    return JsonResponse({'message': 'Token invalido o expirado'})
+                else:
+                    if not self.verify_Id_Plan(pk):
+                        return JsonResponse({'message': 'Plan no encontrado'})
+                    else:
+                        plan = billings.objects.get(id=pk)
+                        plan_data = BillingSerializer(plan)
+                        return JsonResponse({'Plan': plan_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+        
+
+class TrialsView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id_Plan(self, id):
+        if billings.objects.filter(id=id).exists():
+            return True
+        return False
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def get(self, request):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                trialList = trials.objects.all()
+                trial_data = TrialsSerializer(trialList, many=True)
+                return JsonResponse({'Trials': trial_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class TrialsCompanyView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id_Company(self, id):
+        if company.objects.filter(id=id).exists():
+            return True
+        return False
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def get(self, request,pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.verify_Id_Company(pk):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                else:
+                    client = clients.objects.get(
+                        company_id=pk)
+
+                    trialList = trials.objects.filter(client_id= client,active=0).all()
+                    trial_data = TrialsSerializer(trialList, many=True)
+                    return JsonResponse({'Trials': trial_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class CouponView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def get(self, request,pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                coupon = coupons.objects.get(code=pk)
+                if not coupon:
+                    return JsonResponse({'message': 'Cupón no encontrado'})
+                if coupon.active == 0:
+                    return JsonResponse({'isAvailable': False})
+                else:
+                    return JsonResponse({'isAvailable': True})
+                
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+        
+
+class ServicesView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+    def validate_company(self, id):
+        if company.objects.filter(id=id).exists():
+            return True
+        return False
+    def get(self, request,pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.validate_company(pk):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                else:
+                    plan = plan.objects.get(company_id=pk)
+                    if not plan:
+                        return JsonResponse({'message': 'No hay plan para esta empresa'})
+                    else:
+                        services = plan_has_services.objects.filter(
+                            plan_id=plan).all()
+                        if not services:
+                            return JsonResponse({'message': 'No hay servicios en este plan'})
+                        service_data = PlanSerializer(services, many=True)
+                        return JsonResponse({'Services': service_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+        
+
+class PlansView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def validate_company(self, id):
+        if company.objects.filter(id=id).exists():
+            return True
+        return False
+    def validate_plan(self, id):
+        if plan.objects.filter(id=id).exists():
+            return True
+        return False
+    def get(self, request,pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.validate_company(pk):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                else:
+                    if pk == '':
+                        plans = plan.objects.all()
+                        if not plans:
+                            return JsonResponse({'message': 'No hay planes'})
+                        plan_data = PlanSerializer(plans, many=True)
+                        return JsonResponse({'Plans': plan_data.data})
+                    else:
+                        plans = plan.objects.filter(company_id=pk).all()
+                        if not plans:
+                            return JsonResponse({'message': 'No hay planes para esta empresa'})
+                        plan_data = PlanSerializer(plans, many=True)
+                        return JsonResponse({'Plans': plan_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class ServicesTypeView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
+                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
+    def validate_company(self, id):
+        if company.objects.filter(id=id).exists():
+            return True
+        return False
+    def validate_type(self, id):
+        if plan.objects.filter(type=id).exists():
+            return True
+        return False
+    def get(self, request, pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                if not self.validate_company(pk):
+                    return JsonResponse({'message': 'Empresa no encontrada'})
+                else:
+                    if not self.validate_type(pk):
+                        return JsonResponse({'message': 'Tipo de servicio no encontrado'})
+                    else:
+                        services = plan_has_services.objects.filter(
+                            plan_id=plan.objects.get(type=pk)).all()
+                        if not services:
+                            return JsonResponse({'message': 'No hay servicios en este plan'})
+                        service_data = PlanSerializer(services, many=True)
+                        return JsonResponse({'Services': service_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+class contactUsView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+    def validate_token(self, token):
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                    return True
+                else:
+                    return False
+            except jwt.ExpiredSignatureError:
+                return False
+            except jwt.InvalidTokenError:
+                return False
+    def post(self, request):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                jd = json.loads(request.body)
+                contactUs.objects.create(
+                    fullname=jd['fullname'],
+                    email=jd['email'],
+                    city=jd['city'],
+                    company= jd['company'],
+                    telephone=jd['telephone'],
+                    howYoufindUs=jd['howYoufindUs']
+                )
+                return JsonResponse({'message': 'Empresa creada correctamente'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+        
+
+class changePasswordAccountView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                    return True
+                else:
+                    return False
+            except jwt.ExpiredSignatureError:
+                return False
+            except jwt.InvalidTokenError:
+                return False
+    def put(self, request, pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                jd = json.loads(request.body)
+                user = Account.objects.get(id=pk)
+                if not user:
+                    return JsonResponse({'message': 'Usuario no encontrado'})
+                else:
+                    if not check_password(jd['actualPassword'], user.password):
+                        return JsonResponse({'message': 'Contraseña actual incorrecta'})
+                    else:
+                        user.password = make_password(jd['newPassword'])
+                        user.save()
+                        return JsonResponse({'message': 'Contraseña actualizada correctamente'})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class temporalpasswordView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                    return True
+                else:
+                    return False
+            except jwt.ExpiredSignatureError:
+                return False
+            except jwt.InvalidTokenError:
+                return False
+    def get(self, request, pk):
+        try:
+            if not self.validate_token(request.headers['Authorization']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                user = Account.objects.get(id=pk)
+                if not user:
+                    return JsonResponse({'message': 'Usuario no encontrado'})
+                else:
+                    
+                    new_password = 'thisisatemporalpassword' + str(random.randint(100000, 999999)) 
+
+                    return JsonResponse({'message': '"Temporary password retrieved successfully', 'password': new_password})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
+class updateRootAccountView(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, token):
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                    return True
+                else:
+                    return False
+            except jwt.ExpiredSignatureError:
+                return False
+            except jwt.InvalidTokenError:
+                return False
+    def put(self, request, pk):
+        try:
+            jd = json.loads(request.body)
+            if not self.validate_token(jd['jwt']):
+                return JsonResponse({'message': 'Token invalido o expirado'})
+            else:
+                
+                payload = jwt.decode(jd['jwt'], SECRET_KEY, algorithms=['HS256'])
+
+                user = Account.objects.get(id=payload['id_account'])
+                if not user:
+                    return JsonResponse({'message': 'Usuario no encontrado'})
+                else:
+                    profile.objects.filter(id=user.profile_id).update(
+                        name=jd['name'],
+                        lastname=jd['lastname'],
+                        phone=jd['phone']
+                    )
+                    Account.objects.filter(id=pk).update(
+                        email=jd['email'],
+                        password=make_password(jd['password']),
+                        type_id_card=jd['type_id_card'],
+                        id_card=jd['id_card'],
+                        company=company.objects.get(id=jd['company_NIT'])
+                    )
+                
+                    return JsonResponse({'message': 'Usuario actualizado correctamente'})
         except Exception as e:
             return JsonResponse({'message': str(e)})

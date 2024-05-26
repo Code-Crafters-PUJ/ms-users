@@ -51,7 +51,7 @@ Json to test
 
 #### Create root user
 ```http
-  POST /Commertial/user/createRootUser
+  POST /Commertial/user/register
 ```
 
 | Parameter | Type     | Description                |
@@ -62,14 +62,32 @@ Json to test
 
 ```json
 {
-	"name": "prueba",
-  "lastname":"prueba",
-  "phone":"{{$randomPhoneNumber}}",
-  "email":"{{$randomEmail}}",
-  "password":"asd",
-  "company_NIT":"123123123123",
-  "id_card":"123123123123",
-  "type_id_card":"cedula"
+    "Account": {
+        "name": "prueba",
+        "lastname": "prueba",
+        "phone": "{{$randomPhoneNumber}}",
+        "email": "{{$randomEmail}}",
+        "password": "asd",
+        "id_card": "{{$randomPhoneNumber}}",
+        "type_id_card": "cedula"
+    },
+    "Company": {
+        "NIT": "{{$randomPhoneNumber}}",
+        "businessArea": "Tech",
+        "employeeNumber": 23,
+        "name": "asdasdasd"
+    },
+    "Bill": {
+        "suscription_id": 1,
+        "initial_date": "2024-03-08",
+        "final_date": "2024-08-08",
+        "amount": 123.099,
+        "active": 1,
+        "payment_date": "2024-03-09",
+        "payment_method": "Credit card",
+        "plan": 1,
+        "coupon": "asdferasd"
+    }
 }
 ```
 
