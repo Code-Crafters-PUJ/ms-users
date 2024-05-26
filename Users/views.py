@@ -8,7 +8,7 @@ from config.settings import SECRET_KEY
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
-from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, ClientsSerializer, BillingSerializer
+from .serializers import AccountSerializer, TrialsSerializer, PlanSerializer, PermissionSerializer, BillingSerializer
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError, transaction
 
@@ -42,10 +42,10 @@ class RegisterRootAccountView(APIView):
 
                 # Check for missing or invalid data before proceeding
                 required_fields_account = [
-                    'name', 'lastname', 'phone', 'password', 'type_id_card', 'id_card']
+                    'name', 'lastname', 'phone', 'email', 'password', 'type_id_card', 'id_card']
                 required_fields_company = [
                     'NIT', 'businessArea', 'employeeNumber', 'name']
-                required_fields_bill = [ 'initial_date', 'final_date', 'amount',
+                required_fields_bill = ['initial_date', 'final_date', 'amount',
                                         'active', 'payment_date', 'payment_method', 'plan', 'coupon']
                 for field in required_fields_account:
                     if field not in jdAccount:
@@ -57,7 +57,8 @@ class RegisterRootAccountView(APIView):
                             f"Missing required field 'Company.{field}'")
                 for field in required_fields_bill:
                     if field not in jdBill:
-                        raise ValueError(f"Missing required field 'Bill.{field}'")
+                        raise ValueError(
+                            f"Missing required field 'Bill.{field}'")
 
                 if self.verify_email(email):
                     raise ValueError("Email is already registered")
@@ -84,8 +85,17 @@ class RegisterRootAccountView(APIView):
                     id_card=jdAccount['id_card']
                 )
                 jdBill = jd.get('Bill', {})
-                billings.objects.create( initial_date=jdBill['initial_date'], final_date=jdBill['final_date'], amount=jdBill['amount'],
+                billings.objects.create(initial_date=jdBill['initial_date'], final_date=jdBill['final_date'], amount=jdBill['amount'],
                                         active=jdBill['active'], payment_date=jdBill['payment_date'], payment_method=jdBill['payment_method'], plan=plan.objects.get(plan_id=jdBill['plan']), coupon=jdBill['coupon'], payment=payment.objects.get(method=jdBill['payment_method']))
+                module= Module.objects.all()
+                for mod in module:
+                    Permission.objects.create(
+                        module=mod,
+                        account_id=Account.objects.get(
+                            id_card=jdAccount['id_card']),
+                        modify=True,
+                        view=True
+                    )
                 return JsonResponse({'message': 'Cuenta creada exitosamente'}, status=201)
         except IntegrityError as e:
             error_message = 'El ID ya existe en la base de datos'
@@ -171,25 +181,28 @@ class LoginUserView(APIView):
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=360),
                 'iat': datetime.datetime.utcnow()
             }
+            permissions = Permission.objects.filter(
+                account_id=account.id).all()
+            permissions_data = PermissionSerializer(permissions, many=True).data
             token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
             response = JsonResponse(
-                {'jwt': token, 'role': account.role.name})
+                {'jwt': token, 'role': account.role.name, 'Permissions': permissions_data, })
             response.set_cookie(key='jwt', value=token, httponly=True)
             return response
 
         except json.JSONDecodeError as e:
-            print("Error al decodificar JSON:", e)
-            print("Cuerpo de la solicitud:", request.body)
-            # Manejar el error adecuadamente, por ejemplo, devolver una respuesta de error
-            return JsonResponse({'jwt': 'Error en el formato de datos'})
+           print("Error al decodificar JSON:", e)
+           print("Cuerpo de la solicitud:", request.body)
+           # Manejar el error adecuadamente, por ejemplo, devolver una respuesta de error
+           return JsonResponse({'jwt': 'Error en el formato de datos'})
         except ObjectDoesNotExist:
-            print("Usuario no encontrado")
-            # Manejar el error adecuadamente, por ejemplo, devolver una respuesta de error
-            return JsonResponse({'jwt': 'Usuario no encontrado'})
+           print("Usuario no encontrado")
+           # Manejar el error adecuadamente, por ejemplo, devolver una respuesta de error
+           return JsonResponse({'jwt': 'Usuario no encontrado'})
         except Exception as e:
-            print("Error durante el procesamiento de la solicitud:", e)
-            # Devolver una respuesta de error adecuada
-            return JsonResponse({'jwt': str(e)})
+           print("Error durante el procesamiento de la solicitud:", e)
+           # Devolver una respuesta de error adecuada
+           return JsonResponse({'jwt': str(e)})
 
 
 class getAccountInfoview(APIView):
@@ -442,6 +455,7 @@ class UpdatePlanView(APIView):
             return False
         except jwt.InvalidTokenError:
             return False
+
     def put(self, request, pk):
         try:
             if not self.verify_Id_Plan(pk):
@@ -487,7 +501,7 @@ class BillsView(APIView):
             return False
         except jwt.InvalidTokenError:
             return False
-    
+
     def get(self, request, pk):
         try:
             if pk == '':
@@ -509,7 +523,7 @@ class BillsView(APIView):
                         return JsonResponse({'Plan': plan_data.data})
         except Exception as e:
             return JsonResponse({'message': str(e)})
-        
+
 
 class TrialsView(APIView):
     @method_decorator(csrf_exempt)
@@ -567,7 +581,7 @@ class TrialsCompanyView(APIView):
         except jwt.InvalidTokenError:
             return False
 
-    def get(self, request,pk):
+    def get(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
                 return JsonResponse({'message': 'Token invalido o expirado'})
@@ -578,7 +592,8 @@ class TrialsCompanyView(APIView):
                     client = clients.objects.get(
                         company_id=pk)
 
-                    trialList = trials.objects.filter(client_id= client,active=0).all()
+                    trialList = trials.objects.filter(
+                        client_id=client, active=0).all()
                     trial_data = TrialsSerializer(trialList, many=True)
                     return JsonResponse({'Trials': trial_data.data})
         except Exception as e:
@@ -602,7 +617,7 @@ class CouponView(APIView):
         except jwt.InvalidTokenError:
             return False
 
-    def get(self, request,pk):
+    def get(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
                 return JsonResponse({'message': 'Token invalido o expirado'})
@@ -614,10 +629,10 @@ class CouponView(APIView):
                     return JsonResponse({'isAvailable': False})
                 else:
                     return JsonResponse({'isAvailable': True})
-                
+
         except Exception as e:
             return JsonResponse({'message': str(e)})
-        
+
 
 class ServicesView(APIView):
     @method_decorator(csrf_exempt)
@@ -635,11 +650,13 @@ class ServicesView(APIView):
             return False
         except jwt.InvalidTokenError:
             return False
+
     def validate_company(self, id):
         if company.objects.filter(id=id).exists():
             return True
         return False
-    def get(self, request,pk):
+
+    def get(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
                 return JsonResponse({'message': 'Token invalido o expirado'})
@@ -659,7 +676,7 @@ class ServicesView(APIView):
                         return JsonResponse({'Services': service_data.data})
         except Exception as e:
             return JsonResponse({'message': str(e)})
-        
+
 
 class PlansView(APIView):
     @method_decorator(csrf_exempt)
@@ -682,11 +699,13 @@ class PlansView(APIView):
         if company.objects.filter(id=id).exists():
             return True
         return False
+
     def validate_plan(self, id):
         if plan.objects.filter(id=id).exists():
             return True
         return False
-    def get(self, request,pk):
+
+    def get(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
                 return JsonResponse({'message': 'Token invalido o expirado'})
@@ -731,10 +750,12 @@ class ServicesTypeView(APIView):
         if company.objects.filter(id=id).exists():
             return True
         return False
+
     def validate_type(self, id):
         if plan.objects.filter(type=id).exists():
             return True
         return False
+
     def get(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
@@ -755,21 +776,24 @@ class ServicesTypeView(APIView):
         except Exception as e:
             return JsonResponse({'message': str(e)})
 
+
 class contactUsView(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
+
     def validate_token(self, token):
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
-                    return True
-                else:
-                    return False
-            except jwt.ExpiredSignatureError:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
                 return False
-            except jwt.InvalidTokenError:
-                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
     def post(self, request):
         try:
             if not self.validate_token(request.headers['Authorization']):
@@ -780,14 +804,14 @@ class contactUsView(APIView):
                     fullname=jd['fullname'],
                     email=jd['email'],
                     city=jd['city'],
-                    company= jd['company'],
+                    company=jd['company'],
                     telephone=jd['telephone'],
                     howYoufindUs=jd['howYoufindUs']
                 )
                 return JsonResponse({'message': 'Empresa creada correctamente'})
         except Exception as e:
             return JsonResponse({'message': str(e)})
-        
+
 
 class changePasswordAccountView(APIView):
     @method_decorator(csrf_exempt)
@@ -795,16 +819,17 @@ class changePasswordAccountView(APIView):
         return super().dispatch(request, *args, **kwargs)
 
     def validate_token(self, token):
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
-                    return True
-                else:
-                    return False
-            except jwt.ExpiredSignatureError:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
                 return False
-            except jwt.InvalidTokenError:
-                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
     def put(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
@@ -831,16 +856,17 @@ class temporalpasswordView(APIView):
         return super().dispatch(request, *args, **kwargs)
 
     def validate_token(self, token):
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
-                    return True
-                else:
-                    return False
-            except jwt.ExpiredSignatureError:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
                 return False
-            except jwt.InvalidTokenError:
-                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
     def get(self, request, pk):
         try:
             if not self.validate_token(request.headers['Authorization']):
@@ -850,8 +876,9 @@ class temporalpasswordView(APIView):
                 if not user:
                     return JsonResponse({'message': 'Usuario no encontrado'})
                 else:
-                    
-                    new_password = 'thisisatemporalpassword' + str(random.randint(100000, 999999)) 
+
+                    new_password = 'thisisatemporalpassword' + \
+                        str(random.randint(100000, 999999))
 
                     return JsonResponse({'message': '"Temporary password retrieved successfully', 'password': new_password})
         except Exception as e:
@@ -864,24 +891,26 @@ class updateRootAccountView(APIView):
         return super().dispatch(request, *args, **kwargs)
 
     def validate_token(self, token):
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-                if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
-                    return True
-                else:
-                    return False
-            except jwt.ExpiredSignatureError:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if datetime.datetime.utcnow() + datetime.timedelta(minutes=360) > datetime.datetime.fromtimestamp(payload['exp']):
+                return True
+            else:
                 return False
-            except jwt.InvalidTokenError:
-                return False
+        except jwt.ExpiredSignatureError:
+            return False
+        except jwt.InvalidTokenError:
+            return False
+
     def put(self, request, pk):
         try:
             jd = json.loads(request.body)
             if not self.validate_token(jd['jwt']):
                 return JsonResponse({'message': 'Token invalido o expirado'})
             else:
-                
-                payload = jwt.decode(jd['jwt'], SECRET_KEY, algorithms=['HS256'])
+
+                payload = jwt.decode(
+                    jd['jwt'], SECRET_KEY, algorithms=['HS256'])
 
                 user = Account.objects.get(id=payload['id_account'])
                 if not user:
@@ -899,7 +928,7 @@ class updateRootAccountView(APIView):
                         id_card=jd['id_card'],
                         company=company.objects.get(id=jd['company_NIT'])
                     )
-                
+
                     return JsonResponse({'message': 'Usuario actualizado correctamente'})
         except Exception as e:
             return JsonResponse({'message': str(e)})

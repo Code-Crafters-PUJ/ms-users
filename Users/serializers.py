@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Account, trials, billings, clients, plan
+from .models import Account, Permission, trials, billings, clients, plan
 class AccountSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -11,6 +11,11 @@ class BillingSerializer(serializers.ModelSerializer):
         model = billings
         fields = '__all__'
 
+class PermissionSerializer(serializers.ModelSerializer):
+         
+        class Meta:
+            model = Permission
+            fields = '__all__'
 class ClientsSerializer(serializers.ModelSerializer):
 
     class Meta:
