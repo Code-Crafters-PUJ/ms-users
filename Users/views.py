@@ -480,6 +480,28 @@ class UpdatePlanView(APIView):
             return JsonResponse({'message': str(e)})
 
 
+class getPlans(APIView):
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def verify_Id_Plan(self, id):
+        if billings.objects.filter(id=id).exists():
+            return True
+        return False
+
+ 
+
+    def get(self, request):
+        try:
+            list_plans = plan.objects.all()
+
+            plan_data = PlanSerializer(list_plans, many=True)
+            return JsonResponse({'Plan': plan_data.data})
+        except Exception as e:
+            return JsonResponse({'message': str(e)})
+
+
 class BillsView(APIView):
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -504,7 +526,7 @@ class BillsView(APIView):
 
     def get(self, request, pk):
         try:
-            if pk == '':
+            if not pk:
                 if not self.validate_token(request.headers['Authorization']):
                     return JsonResponse({'message': 'Token invalido o expirado'})
                 else:

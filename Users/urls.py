@@ -1,14 +1,14 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import RegisterRootAccountView, updateRootAccountView, temporalpasswordView, changePasswordAccountView, UpdatePlanView, contactUsView, ServicesView, ServicesTypeView, PlansView, CouponView, TrialsCompanyView, BillsView, TrialsView, RegisterAccountView, LoginUserView, getAccountInfoview, allUsersInfobyCompany, logoutAccountView, getRootAccount, deleteAccountView
+from .views import RegisterRootAccountView, getPlans, updateRootAccountView, temporalpasswordView, changePasswordAccountView, UpdatePlanView, contactUsView, ServicesView, ServicesTypeView, PlansView, CouponView, TrialsCompanyView, BillsView, TrialsView, RegisterAccountView, LoginUserView, getAccountInfoview, allUsersInfobyCompany, logoutAccountView, getRootAccount, deleteAccountView
 app_name = 'user'
 
 urlpatterns = [
     path('register', RegisterRootAccountView.as_view(), name='user_register'),
     path('createUser', RegisterAccountView.as_view(), name='user_register'),
     path('updatePlan/<int:pk>', UpdatePlanView.as_view(), name='update_plan'),
-    path('actualPlans', BillsView.as_view(), name='update_plan'),
+    path('actualPlans', getPlans.as_view(), name='update_plan'),
     path('actualTrials', TrialsView.as_view(), name='update_plan'),
     path('getTrialsCompany', TrialsCompanyView.as_view(), name='update_plan'),
     path('plans', PlansView.as_view(), name='update_plan'),

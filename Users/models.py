@@ -51,7 +51,7 @@ class payment(models.Model):
 
 class plan (models.Model):
     plan_id = models.AutoField(primary_key=True)
-    type = models.CharField(max_length=45)
+    typePlan = models.CharField(max_length=45)
     description = models.CharField(max_length=45,null=True,)
     mensual_price = models.FloatField()
     semestral_price = models.FloatField()

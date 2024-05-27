@@ -9,25 +9,23 @@ import json
 def create_plan(ch, method, properties, body):
     # Aquí escribe la lógica para actualizar tu base de datos
     message = body.decode('utf-8')
-    print(message)
     data = json.loads(message)
 
-    plan_data=plan.objects.create(
-        type=data['type'],
+    plan_data = plan.objects.create(
+        typePlan=data['type'],
         mensual_price=data['mensualPrice'],
         semestral_price=data['semestralPrice'],
         anual_price=data['anualPrice'],
         state=data['state'],
         num_accounts=data['numAccounts'],
     )
-    
+
     plan_has_services.objects.filter(plan_id=plan_data.plan_id).delete()
     for service in data['services']:
         # Suponiendo que tienes un modelo Service y puedes obtener los servicios por algún identificador
         service_obj = services.objects.get(id=service['id'])
         plan_has_services.objects.create(
             plan_id=plan_data.plan_id, service_id=service_obj, active=1)
-
 
     # Acknowledge the message
     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -36,11 +34,28 @@ def create_plan(ch, method, properties, body):
 def update_plan(ch, method, properties, body):
     # Aquí escribe la lógica para actualizar tu base de datos
     message = body.decode('utf-8')
+    print(message)
     # Supongamos que `message` es el nuevo valor que deseas establecer
-    for obj in plan.objects.all():
-        obj.field_to_update = message
-        obj.save()
+    data = json.loads(message)
 
+    dto = data.get('dto', {})
+    if plan.objects.filter(typePlan=data['type']).exists():
+        plan.objects.filter(typePlan=data['type']).update(
+            typePlan=data['type'],
+            mensual_price=dto['mensualPrice'],
+            semestral_price=dto['semestralPrice'],
+            anual_price=dto['anualPrice'],
+            state=dto['state'],
+            num_accounts=dto['numAccounts'],
+        )
+        plan_data = plan.objects.get(typePlan=data['type'])
+
+        plan_has_services.objects.filter(plan_id=plan_data.plan_id).delete()
+        for service in data['services']:
+            # Suponiendo que tienes un modelo Service y puedes obtener los servicios por algún identificador
+            service_obj = services.objects.get(id=service['id'])
+            plan_has_services.objects.create(
+                plan_id=plan_data.plan_id, service_id=service_obj, active=1)
     # Acknowledge the message
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -49,9 +64,9 @@ def delete_plan(ch, method, properties, body):
     # Aquí escribe la lógica para actualizar tu base de datos
     message = body.decode('utf-8')
     # Supongamos que `message` es el nuevo valor que deseas establecer
-    for obj in plan.objects.all():
-        obj.field_to_update = message
-        obj.save()
+    data = json.loads(message)
+
+    plan.objects.filter(typePlan=data['type']).delete()
 
     # Acknowledge the message
     ch.basic_ack(delivery_tag=method.delivery_tag)
