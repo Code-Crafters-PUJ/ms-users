@@ -130,8 +130,9 @@ USE_TZ = True
 
 CORS_ORIGIN_WHITELIST = [
     "http://localhost:3000",
-    "http://10.101.137.93",
-]
+    "http://10.147.17.183",
+    "http://localhost:4200"
+]   
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials in CORS requests
 
 

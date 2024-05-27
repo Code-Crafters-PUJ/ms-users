@@ -60,6 +60,18 @@ def update_plan(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
+def publish_to_rabbitmq(message, queuename):
+        try:
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host='10.147.17.214', port=5672))
+            channel = connection.channel()
+            channel.queue_declare(queue=queuename)
+            channel.basic_publish(
+                exchange='', routing_key=queuename, body=json.dumps(message))
+            connection.close()
+            print("Mensaje publicado en RabbitMQ correctamente.")
+        except Exception as e:
+            print("Error al publicar en RabbitMQ:", e)
 def delete_plan(ch, method, properties, body):
     # Aquí escribe la lógica para actualizar tu base de datos
     message = body.decode('utf-8')

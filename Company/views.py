@@ -18,6 +18,8 @@ import random
 from .models import company, branch,support
 from Users.models import Account,plan
 from Users.serializers import PlanSerializer
+
+from Users.rabbitmqcaller import publish_to_rabbitmq
 # Create your views here.
 
 
@@ -51,7 +53,7 @@ class createCompany(APIView):
                 mensaje = "businessName:"+businessName+",employeeNumber:" + \
                     employeeNumber+",NIT:"+NIT+",businessArea:"+businessArea+",IDCompany:"+str(compa.id)
                 print(mensaje)
-                self.publish_to_rabbitmq(mensaje, "company_queue")
+                publish_to_rabbitmq(mensaje, "company_queue")
                 return JsonResponse({'message': 'Empresa creada correctamente'})
         except json.JSONDecodeError as e:
             print("Error al decodificar JSON:", e)
@@ -67,19 +69,7 @@ class createCompany(APIView):
             # Devolver una respuesta de error adecuada
             return JsonResponse({'message': str(e)})
 
-    def publish_to_rabbitmq(self, message, queuename):
-
-        try:
-            connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host='10.147.17.214', port=5672))
-            channel = connection.channel()
-            channel.queue_declare(queue=queuename)
-            channel.basic_publish(
-                exchange='', routing_key=queuename, body=json.dumps(message))
-            connection.close()
-            print("Mensaje publicado en RabbitMQ correctamente.")
-        except Exception as e:
-            print("Error al publicar en RabbitMQ:", e)
+    
 
 
 
@@ -257,9 +247,11 @@ class branchInfoview(APIView):
                     return JsonResponse({'message': 'Empresa no encontrada'})
                 else:
                     company_data = get_object_or_404(company, NIT=pk)
-                    branch_data = branch.objects.filter(company=company_data)
-                    branch_serializer = branchSerializer(branch_data, many=True)
-                    return JsonResponse(branch_serializer.data)
+                    print(company_data)
+                    branch_data = branch.objects.filter(company=company_data.id)
+                    branch_serializer = branchSerializer(
+                        branch_data, many=True).data
+                    return JsonResponse(branch_serializer)
         except KeyError:
             return JsonResponse({'message': 'Token no encontrado'})
     def post(self, request):
@@ -275,9 +267,9 @@ class branchInfoview(APIView):
                 name = jd.get('name')
                 address = jd.get('address')
                 branch.objects.create(name=name, address=address, company=company_data)
-                mensaje = "name:"+name+",address:"+address
+                mensaje = "name:"+str(name)+",address:"+str(address)+",NIT:"+str(NIT)+",CompanyId:"+str(company_data.id)
                 print(mensaje)
-                self.publish_to_rabbitmq(mensaje, "branch_queue")
+                publish_to_rabbitmq(mensaje, "branch_queue")
                 return JsonResponse({'message': 'Sucursal creada correctamente'})
         except json.JSONDecodeError as e:
 

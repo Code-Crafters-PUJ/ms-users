@@ -1,7 +1,7 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import createCompany, getInfoCompany, validBranchView, getInfoPlanCompany
+from .views import createCompany, getInfoCompany, branchInfoview, validBranchView, getInfoPlanCompany
 
 app_name = 'company'
 
@@ -12,6 +12,10 @@ urlpatterns = [
     path('modules/<int:pk>', getInfoCompany.as_view(), name='company_info'),
     path('actualPlan/<int:pk>', getInfoPlanCompany.as_view(), name='company_info'),
     path('valid/branchId/<int:pk>', validBranchView.as_view(), name='company_info'),
+    path('createBranch', branchInfoview.as_view(), name='company_info'),
+    path('editBranch/<int:pk>', branchInfoview.as_view(), name='company_info'),
+    path('deleteBranch/<int:pk>', branchInfoview.as_view(), name='company_info'),
+    path('getBranch/<str:pk>', branchInfoview.as_view(), name='company_info'),
     #    path('<int:pk>', getAccountInfoview.as_view(), name='account_info'),
     #    path('getAccounts', getAllAccountInfoview.as_view(), name='accounts_info'),
     #    path('logout', logoutAccountView.as_view(), name='accounts_info'),
