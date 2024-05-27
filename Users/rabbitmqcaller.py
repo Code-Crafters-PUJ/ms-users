@@ -22,7 +22,7 @@ def create_plan(ch, method, properties, body):
     plan_has_services.objects.filter(plan_id=plan_data.plan_id).delete()
     for data in data['services']:
         # Suponiendo que tienes un modelo Service y puedes obtener los servicios por algún identificador
-        service_obj = services.objects.get(service_id=data['id'])
+        service_obj = services.objects.get(service_id=int(data['id']))
         plan_has_services.objects.create(
             plan_id=plan_data.plan_id, service_id=service_obj, active=1)
 
